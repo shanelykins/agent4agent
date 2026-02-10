@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Real Estate Assistant - Control Plane</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: white;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Left Panel - Calendar OR Client Detail (never both) */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid #222;
+            height: 100vh;
+        }
+
+        .panel-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 8px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .view-toggle {
+            display: flex;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: #6366f1;
+            color: white;
+        }
+
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .date-nav-btn {
+            background: #1a1a1a;
+            border: none;
+            color: #888;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .date-nav-btn:hover {
+            background: #333;
+            color: white;
+        }
+
+        .current-date-label {
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 180px;
+            text-align: center;
+        }
+
+        /* Calendar View */
+        #calendarView {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .calendar-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px;
+            min-height: 0; /* Important for flex overflow */
+        }
+
+        .week-header {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            gap: 1px;
+            margin-bottom: 8px;
+        }
+
+        .week-header-cell {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            padding: 8px;
+        }
+
+        .week-header-cell.today {
+            color: #6366f1;
+        }
+
+        .day-label {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+            margin-top: 4px;
+        }
+
+        .week-header-cell.today .day-label {
+            background: #6366f1;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .time-grid {
+            position: relative;
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            gap: 1px;
+        }
+
+        .time-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .time-slot {
+            height: 50px;
+            font-size: 11px;
+            color: #555;
+            text-align: right;
+            padding-right: 12px;
+            padding-top: 4px;
+        }
+
+        .day-col {
+            position: relative;
+            min-height: 600px;
+            background: #111;
+            border-radius: 8px;
+        }
+
+        .cal-event {
+            position: absolute;
+            left: 4px;
+            right: 4px;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .cal-event:hover {
+            transform: scale(1.02);
+            z-index: 10;
+        }
+
+        .cal-event.showing {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .cal-event.follow-up {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .cal-event.offer {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .cal-event.closing {
+            background: linear-gradient(135deg, #ec4899, #db2777);
+        }
+
+        .cal-event.ai-completed {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: 2px solid #34d399;
+            animation: popIn 0.4s ease;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .event-title {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .event-sub {
+            opacity: 0.8;
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Time Simulator */
+        .time-sim {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin: 16px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .sim-time {
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .sim-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .sim-btn {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #6366f1;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .sim-btn:hover {
+            background: #6366f1;
+            color: white;
+        }
+
+        /* Client Detail View (inline, replaces calendar) */
+        #clientView {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        #clientView.active {
+            display: flex;
+        }
+
+        #calendarView.hidden {
+            display: none;
+        }
+
+        .client-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .client-info-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .client-name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .client-meta {
+            font-size: 13px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .back-btn {
+            background: #1a1a1a;
+            border: none;
+            color: #888;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-btn:hover {
+            background: #333;
+            color: white;
+        }
+
+        .client-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            min-height: 0; /* Important for flex overflow */
+        }
+
+        .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        /* Funnel */
+        .funnel {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .funnel-stage {
+            flex: 1;
+            padding: 12px 8px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .funnel-stage.done {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .funnel-stage.current {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .funnel-icon {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        /* Properties */
+        .properties-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .property-chip {
+            background: #1a1a1a;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .property-chip .status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .property-chip .status.hot { background: #ef4444; }
+        .property-chip .status.warm { background: #f59e0b; }
+        .property-chip .status.new { background: #3b82f6; }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tl-item {
+            display: grid;
+            grid-template-columns: 12px 90px 1fr;
+            gap: 12px;
+            align-items: start;
+            padding: 12px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .tl-item.pending-draft {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            animation: subtlePulse 2s ease infinite;
+        }
+
+        @keyframes subtlePulse {
+            0%, 100% { border-color: rgba(99, 102, 241, 0.3); }
+            50% { border-color: rgba(99, 102, 241, 0.6); }
+        }
+
+        .tl-item.just-sent {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tl-dot {
+            width: 8px;
+            height: 8px;
+            background: #333;
+            border-radius: 50%;
+            margin-top: 6px;
+        }
+
+        .tl-item.ai .tl-dot {
+            background: #6366f1;
+        }
+
+        .tl-item.pending-draft .tl-dot {
+            background: #f59e0b;
+            animation: pulse 1.5s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+        }
+
+        .tl-date {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .tl-type {
+            font-size: 12px;
+            font-weight: 600;
+            color: #aaa;
+            margin-bottom: 2px;
+        }
+
+        .tl-text {
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        .tl-item.pending-draft .tl-type {
+            color: #f59e0b;
+        }
+
+        .pending-label {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-weight: 600;
+        }
+
+        /* Right Panel - AI Messaging (ALWAYS VISIBLE) */
+        .message-panel {
+            display: flex;
+            flex-direction: column;
+            background: #111;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .message-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #222;
+            flex-shrink: 0;
+        }
+
+        .message-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .message-header p {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0; /* Important for flex overflow */
+        }
+
+        .msg {
+            max-width: 90%;
+        }
+
+        .msg.ai {
+            align-self: flex-start;
+        }
+
+        .msg.user {
+            align-self: flex-end;
+        }
+
+        .msg-bubble {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+
+        .msg.ai .msg-bubble {
+            background: #1e1e2e;
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg.user .msg-bubble {
+            background: #6366f1;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-time {
+            font-size: 10px;
+            color: #555;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        /* Quick Actions in messaging panel */
+        .quick-actions {
+            padding: 12px 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-top: 1px solid #222;
+            flex-shrink: 0;
+        }
+
+        .quick-actions:empty {
+            display: none;
+            padding: 0;
+        }
+
+        .quick-btn {
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #ccc;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        .quick-btn.primary {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: white;
+        }
+
+        .quick-btn.primary:hover {
+            background: #5855eb;
+        }
+
+        .quick-btn.success {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .input-area {
+            padding: 16px 20px;
+            border-top: 1px solid #222;
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+            background: #111;
+        }
+
+        .msg-input {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 24px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .msg-input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #6366f1;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .send-btn:hover {
+            background: #5855eb;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            border: 1px solid #10b981;
+            padding: 14px 24px;
+            border-radius: 12px;
+            z-index: 200;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Left Panel: Calendar OR Client Detail -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <div class="logo">
+                    <div class="logo-icon"></div>
+                    <span>AI Assistant</span>
+                </div>
+
+                <div class="header-controls" id="calendarControls">
+                    <div class="view-toggle">
+                        <button class="view-btn" onclick="setView('day')">Day</button>
+                        <button class="view-btn active" onclick="setView('week')">Week</button>
+                        <button class="view-btn" onclick="setView('month')">Month</button>
+                    </div>
+
+                    <div class="date-nav">
+                        <button class="date-nav-btn" onclick="navDate(-1)">‹</button>
+                        <span class="current-date-label" id="dateLabel">Feb 10 - 16, 2025</span>
+                        <button class="date-nav-btn" onclick="navDate(1)">›</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendarView">
+                <div class="time-sim">
+                    <div>
+                        <div class="sim-label">Demo Time</div>
+                        <div class="sim-time" id="simTime">2:00 PM</div>
+                    </div>
+                    <button class="sim-btn" onclick="fastForward()">⏩ +1 Hour</button>
+                </div>
+                <div class="calendar-body">
+                    <div class="week-header" id="weekHeader"></div>
+                    <div class="time-grid" id="timeGrid"></div>
+                </div>
+            </div>
+
+            <!-- Client Detail View (inline, not modal) -->
+            <div id="clientView">
+                <div class="client-header">
+                    <div class="client-info-row">
+                        <div class="avatar" id="clientAvatar">SC</div>
+                        <div>
+                            <div class="client-name" id="clientName">Sarah Chen</div>
+                            <div class="client-meta" id="clientMeta">+1 (415) 555-0123</div>
+                        </div>
+                    </div>
+                    <button class="back-btn" onclick="showCalendar()">← Back to Calendar</button>
+                </div>
+                <div class="client-body">
+                    <div class="section-label">Pipeline Stage</div>
+                    <div class="funnel" id="clientFunnel"></div>
+
+                    <div class="section-label">Properties Interested In</div>
+                    <div class="properties-grid" id="clientProperties"></div>
+
+                    <div class="section-label">Activity History</div>
+                    <div class="timeline" id="clientTimeline"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: AI Messaging (ALWAYS VISIBLE) -->
+        <div class="message-panel">
+            <div class="message-header">
+                <h2>AI Agents</h2>
+                <p>Your assistants communicate here</p>
+            </div>
+            <div class="messages" id="messages"></div>
+            <div class="quick-actions" id="quickActions"></div>
+            <div class="input-area">
+                <input type="text" class="msg-input" id="msgInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter')sendMessage()">
+                <button class="send-btn" onclick="sendMessage()">↑</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ DATA ============
+        const properties = {
+            '950-tennessee': { address: '950 Tennessee St #218', price: '$1.329M', type: 'showing' },
+            '877-indiana': { address: '877 Indiana St #106', price: '$1.29M', type: 'showing' },
+            '1300-22nd': { address: '1300 22nd St #410', price: '$1.36M', type: 'showing' },
+            '2177-3rd': { address: '2177 3rd St #701', price: '$1.37M', type: 'showing' },
+        };
+
+        const clients = {
+            'sarah-chen': {
+                id: 'sarah-chen',
+                name: 'Sarah Chen',
+                initials: 'SC',
+                phone: '+1 (415) 555-0123',
+                criteria: 'Looking for 2BR in Dogpatch, $1.2-1.5M',
+                stage: 2,
+                properties: [
+                    { id: '950-tennessee', status: 'hot', note: 'Loved it, wants 2nd look' },
+                    { id: '877-indiana', status: 'warm', note: 'Interested, price concern' },
+                ],
+                history: [
+                    { date: 'Today, 2:00 PM', type: 'Showing', text: 'Toured 950 Tennessee St #218', ai: false },
+                    { date: 'Feb 8, 3:30 PM', type: 'AI Follow-up', text: 'Sent follow-up after 877 Indiana showing', ai: true },
+                    { date: 'Feb 8, 2:00 PM', type: 'Showing', text: 'Toured 877 Indiana St #106', ai: false },
+                    { date: 'Feb 5, 10:00 AM', type: 'AI Match', text: 'Sent 5 property matches based on criteria', ai: true },
+                    { date: 'Feb 3, 9:00 AM', type: 'Lead', text: 'Inquiry via Zillow - Dogpatch condos', ai: false },
+                ]
+            },
+            'mike-johnson': {
+                id: 'mike-johnson',
+                name: 'Mike Johnson',
+                initials: 'MJ',
+                phone: '+1 (415) 555-0456',
+                criteria: '1-2BR, needs parking, $800K-1M',
+                stage: 1,
+                properties: [
+                    { id: '1300-22nd', status: 'new', note: 'Scheduled for Saturday' },
+                ],
+                history: [
+                    { date: 'Feb 9, 4:00 PM', type: 'Scheduled', text: 'Showing booked: 1300 22nd St', ai: false },
+                    { date: 'Feb 7, 2:00 PM', type: 'Call', text: 'Initial consultation - discussed needs', ai: false },
+                    { date: 'Feb 6, 11:00 AM', type: 'Referral', text: 'Referred by Tom Richards', ai: false },
+                ]
+            },
+            'emily-davis': {
+                id: 'emily-davis',
+                name: 'Emily Davis',
+                initials: 'ED',
+                phone: '+1 (415) 555-0789',
+                criteria: '2BR with outdoor space, $1-1.3M',
+                stage: 2,
+                properties: [
+                    { id: '877-indiana', status: 'warm', note: 'Price dropped - re-engage' },
+                    { id: '2177-3rd', status: 'new', note: 'New match' },
+                ],
+                history: [
+                    { date: 'Feb 3, 3:00 PM', type: 'Showing', text: 'Toured 877 Indiana - liked but price high', ai: false },
+                    { date: 'Feb 1, 11:00 AM', type: 'AI Match', text: 'Sent curated property list', ai: true },
+                    { date: 'Jan 28, 10:00 AM', type: 'Call', text: 'Discovery call - relocating from NYC', ai: false },
+                ]
+            },
+            'james-wong': {
+                id: 'james-wong',
+                name: 'James Wong',
+                initials: 'JW',
+                phone: '+1 (415) 555-0234',
+                criteria: '3BR family home, $1.5-2M',
+                stage: 3,
+                properties: [
+                    { id: '950-tennessee', status: 'hot', note: 'Offer submitted!' },
+                ],
+                history: [
+                    { date: 'Today, 11:00 AM', type: 'Offer', text: 'Submitted offer on 950 Tennessee - $1.31M', ai: false },
+                    { date: 'Feb 8, 2:00 PM', type: 'Showing', text: '2nd viewing of 950 Tennessee', ai: false },
+                    { date: 'Feb 5, 3:00 PM', type: 'Showing', text: 'First showing - 950 Tennessee', ai: false },
+                ]
+            }
+        };
+
+        const calendarEvents = [
+            { id: 1, clientId: 'james-wong', propertyId: '950-tennessee', type: 'offer', day: 1, hour: 9, duration: 0.5, title: 'Offer Review', sub: 'James Wong - 950 Tennessee' },
+            { id: 2, clientId: 'sarah-chen', propertyId: '950-tennessee', type: 'showing', day: 1, hour: 14, duration: 1, title: 'Sarah Chen', sub: '950 Tennessee St' },
+            { id: 3, clientId: 'emily-davis', propertyId: '877-indiana', type: 'follow-up', day: 1, hour: 17, duration: 0.5, title: 'Follow-up Due', sub: 'Emily Davis - Price drop' },
+            { id: 4, clientId: 'mike-johnson', propertyId: '1300-22nd', type: 'showing', day: 2, hour: 10, duration: 1, title: 'Mike Johnson', sub: '1300 22nd St' },
+            { id: 5, clientId: 'emily-davis', propertyId: '2177-3rd', type: 'showing', day: 2, hour: 14, duration: 1, title: 'Emily Davis', sub: '2177 3rd St' },
+            { id: 6, clientId: 'sarah-chen', propertyId: '877-indiana', type: 'showing', day: 3, hour: 11, duration: 1, title: 'Sarah Chen', sub: '877 Indiana St' },
+            { id: 7, clientId: 'james-wong', propertyId: '950-tennessee', type: 'closing', day: 3, hour: 15, duration: 1, title: 'Inspection', sub: 'James Wong - 950 Tennessee' },
+            { id: 8, clientId: 'sarah-chen', propertyId: '950-tennessee', type: 'showing', day: 4, hour: 10, duration: 1, title: 'Sarah Chen', sub: '2nd look - 950 Tennessee' },
+            { id: 9, clientId: 'mike-johnson', propertyId: '877-indiana', type: 'showing', day: 4, hour: 14, duration: 1, title: 'Mike Johnson', sub: '877 Indiana St' },
+            { id: 10, clientId: 'emily-davis', propertyId: '877-indiana', type: 'offer', day: 5, hour: 11, duration: 0.5, title: 'Draft Offer', sub: 'Emily Davis - 877 Indiana' },
+            { id: 11, clientId: 'sarah-chen', propertyId: '950-tennessee', type: 'offer', day: 5, hour: 15, duration: 0.5, title: 'Offer Prep', sub: 'Sarah Chen - 950 Tennessee' },
+            { id: 12, clientId: 'mike-johnson', propertyId: '2177-3rd', type: 'showing', day: 6, hour: 10, duration: 1, title: 'Mike Johnson', sub: '2177 3rd St' },
+            { id: 13, clientId: 'mike-johnson', propertyId: '950-tennessee', type: 'showing', day: 6, hour: 12, duration: 1, title: 'Mike Johnson', sub: '950 Tennessee St' },
+        ];
+
+        const pendingActions = [
+            {
+                id: 1,
+                clientId: 'sarah-chen',
+                type: 'follow-up',
+                triggerHour: 15,
+                triggered: false,
+                message: "📍 POST-SHOWING FOLLOW-UP\n\nSarah Chen just finished touring 950 Tennessee St. She loved the rooftop lounge!\n\nI've drafted a personalized follow-up. Type PREVIEW to see it, or SEND to approve.",
+                preview: "Hi Sarah! Thanks for touring 950 Tennessee today. Those bay views from the rooftop were incredible, right? Let me know if you have any questions or want to schedule a second look!",
+                activityText: "Sent post-showing follow-up about 950 Tennessee"
+            },
+            {
+                id: 2,
+                clientId: 'mike-johnson',
+                type: 'pre-showing',
+                triggerHour: 16,
+                triggered: false,
+                message: "📋 PRE-SHOWING PREP\n\nMike Johnson has a showing tomorrow at 1300 22nd St.\n\nI've prepared a property brief for him. Type PREVIEW to see it, or SEND to deliver.",
+                preview: "Hi Mike! Looking forward to showing you 1300 22nd St tomorrow at 10 AM. Here's what you'll love: 1BR with private balcony, in-unit W/D, and one parking spot included. The building has a gym and rooftop. See you there!",
+                activityText: "Sent pre-showing prep for 1300 22nd St"
+            },
+            {
+                id: 3,
+                clientId: 'emily-davis',
+                type: 'price-drop',
+                triggerHour: 17,
+                triggered: false,
+                message: "🔔 PRICE DROP ALERT\n\n877 Indiana St just dropped $40K! Emily Davis toured this property and loved it but was concerned about price.\n\nI've drafted an alert message. Type PREVIEW to see it, or SEND to notify her.",
+                preview: "Hi Emily! Great news - 877 Indiana St just dropped to $1.25M (was $1.29M). I know price was your main concern when you toured. Want to take another look before others jump on this?",
+                activityText: "Sent price drop alert for 877 Indiana"
+            },
+            {
+                id: 4,
+                clientId: 'james-wong',
+                type: 'offer-update',
+                triggerHour: 18,
+                triggered: false,
+                message: "🎉 OFFER ACCEPTED!\n\nJames Wong's offer on 950 Tennessee was ACCEPTED! Seller agreed to $1.31M.\n\nI've drafted a congratulations message with next steps. Type PREVIEW or SEND.",
+                preview: "James! Amazing news - your offer on 950 Tennessee was ACCEPTED! 🎉 The seller agreed to $1.31M. I'm scheduling the inspection for this week. Welcome to your new home!",
+                activityText: "Sent offer acceptance notification"
+            },
+            {
+                id: 5,
+                clientId: 'sarah-chen',
+                type: 'schedule-request',
+                triggerHour: 19,
+                triggered: false,
+                message: "📅 SCHEDULING OPTIONS\n\nSarah Chen wants a second look at 950 Tennessee. I've checked the listing agent's availability.\n\nDraft ready with time options. Type PREVIEW or SEND.",
+                preview: "Hi Sarah! I checked with the listing agent - here are times for your second look at 950 Tennessee:\n\n• Thursday 10 AM\n• Thursday 3 PM\n• Friday 2 PM\n\nWhich works best?",
+                activityText: "Sent scheduling options for second showing"
+            },
+            {
+                id: 6,
+                clientId: 'emily-davis',
+                type: 'offer-prep',
+                triggerHour: 20,
+                triggered: false,
+                message: "📝 OFFER LETTER READY\n\nEmily Davis is ready to make an offer on 877 Indiana St. I've prepared a competitive offer at $1.27M with a personal letter.\n\nType PREVIEW to review, or SEND to submit.",
+                preview: "Emily, I've prepared your offer for 877 Indiana:\n\n• Price: $1.27M (2% above asking)\n• 20% down, conventional loan\n• 30-day close\n• Personal letter to seller included\n\nReady to submit?",
+                activityText: "Submitted offer on 877 Indiana St"
+            }
+        ];
+
+        // State
+        let simTime = new Date();
+        simTime.setHours(14, 0, 0, 0);
+        let weekOffset = 0;
+        let currentClientId = null;
+        let currentAction = null;
+
+        // ============ INIT ============
+        function init() {
+            renderCalendar();
+            updateSimTime();
+            addAIMessage("Hey! I'm monitoring your calendar and clients. Fast forward time to see AI automations trigger.\n\nClick any calendar event to see client details. All actions happen right here in this panel.");
+        }
+
+        // ============ CALENDAR ============
+        function renderCalendar() {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
+
+            // Week header
+            let headerHTML = '<div class="week-header-cell"></div>';
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                const isToday = d.toDateString() === today.toDateString();
+                headerHTML += `
+                    <div class="week-header-cell ${isToday ? 'today' : ''}">
+                        ${days[d.getDay()]}
+                        <div class="day-label">${d.getDate()}</div>
+                    </div>
+                `;
+            }
+            document.getElementById('weekHeader').innerHTML = headerHTML;
+
+            // Date label
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            document.getElementById('dateLabel').textContent =
+                `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+            // Time grid
+            let gridHTML = '<div class="time-col">';
+            for (let h = 8; h <= 20; h++) {
+                const label = h === 12 ? '12 PM' : h > 12 ? `${h-12} PM` : `${h} AM`;
+                gridHTML += `<div class="time-slot">${label}</div>`;
+            }
+            gridHTML += '</div>';
+
+            for (let d = 0; d < 7; d++) {
+                gridHTML += `<div class="day-col" id="day-${d}"></div>`;
+            }
+            document.getElementById('timeGrid').innerHTML = gridHTML;
+
+            // Place events
+            calendarEvents.forEach(ev => {
+                const col = document.getElementById(`day-${ev.day}`);
+                if (col) {
+                    const top = (ev.hour - 8) * 50;
+                    const height = ev.duration * 50 - 4;
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = `cal-event ${ev.type}`;
+                    eventDiv.style.top = `${top}px`;
+                    eventDiv.style.height = `${height}px`;
+                    eventDiv.innerHTML = `
+                        <div class="event-title">${ev.title}</div>
+                        <div class="event-sub">${ev.sub}</div>
+                    `;
+                    eventDiv.onclick = () => showClient(ev.clientId);
+                    col.appendChild(eventDiv);
+                }
+            });
+        }
+
+        function navDate(dir) {
+            weekOffset += dir;
+            renderCalendar();
+        }
+
+        function setView(v) {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // ============ CLIENT VIEW ============
+        function showClient(clientId) {
+            const client = clients[clientId];
+            if (!client) return;
+
+            currentClientId = clientId;
+
+            // Populate client view
+            document.getElementById('clientAvatar').textContent = client.initials;
+            document.getElementById('clientName').textContent = client.name;
+            document.getElementById('clientMeta').textContent = `${client.phone} • ${client.criteria}`;
+
+            // Funnel
+            const stages = ['New Lead', 'Qualified', 'Touring', 'Offer', 'Contract', 'Closed'];
+            const icons = ['📋', '✓', '🏠', '📝', '📄', '🔑'];
+            document.getElementById('clientFunnel').innerHTML = stages.map((s, i) => {
+                const cls = i < client.stage ? 'done' : i === client.stage ? 'current' : '';
+                return `<div class="funnel-stage ${cls}" id="funnel-${i}"><div class="funnel-icon">${icons[i]}</div>${s}</div>`;
+            }).join('');
+
+            // Properties
+            document.getElementById('clientProperties').innerHTML = client.properties.map(p => {
+                const prop = properties[p.id];
+                return `<div class="property-chip"><span class="status ${p.status}"></span>${prop.address} - ${p.note}</div>`;
+            }).join('');
+
+            // Timeline - check for pending draft
+            renderClientTimeline(client);
+
+            // Switch view
+            document.getElementById('calendarView').classList.add('hidden');
+            document.getElementById('clientView').classList.add('active');
+            document.getElementById('calendarControls').style.display = 'none';
+        }
+
+        function renderClientTimeline(client) {
+            let timelineHTML = '';
+
+            // Check if there's a pending action for this client
+            const pendingForClient = pendingActions.find(a => a.clientId === client.id && a.triggered && !a.sent);
+            if (pendingForClient) {
+                timelineHTML += `
+                    <div class="tl-item pending-draft">
+                        <div class="tl-dot"></div>
+                        <div class="tl-date">Pending</div>
+                        <div class="tl-content">
+                            <div class="tl-type">🤖 AI Draft <span class="pending-label">AWAITING APPROVAL</span></div>
+                            <div class="tl-text">${pendingForClient.preview}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Regular history
+            timelineHTML += client.history.map(h => `
+                <div class="tl-item ${h.ai ? 'ai' : ''} ${h.justSent ? 'just-sent' : ''}">
+                    <div class="tl-dot"></div>
+                    <div class="tl-date">${h.date}</div>
+                    <div class="tl-content">
+                        <div class="tl-type">${h.ai ? '🤖 ' : ''}${h.type}</div>
+                        <div class="tl-text">${h.text}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('clientTimeline').innerHTML = timelineHTML;
+        }
+
+        function showCalendar() {
+            document.getElementById('clientView').classList.remove('active');
+            document.getElementById('calendarView').classList.remove('hidden');
+            document.getElementById('calendarControls').style.display = 'flex';
+            currentClientId = null;
+            renderCalendar();
+        }
+
+        // ============ TIME SIMULATOR ============
+        function updateSimTime() {
+            const h = simTime.getHours();
+            const m = simTime.getMinutes();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            document.getElementById('simTime').textContent = `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+        }
+
+        function fastForward() {
+            simTime.setHours(simTime.getHours() + 1);
+            updateSimTime();
+            checkTriggers();
+        }
+
+        function checkTriggers() {
+            const currentHour = simTime.getHours();
+            pendingActions.forEach(action => {
+                if (!action.triggered && currentHour >= action.triggerHour) {
+                    action.triggered = true;
+                    triggerAction(action);
+                }
+            });
+        }
+
+        function triggerAction(action) {
+            currentAction = action;
+            addAIMessage(action.message);
+            showQuickActions();
+
+            // If we're viewing this client, refresh their timeline
+            if (currentClientId === action.clientId) {
+                renderClientTimeline(clients[action.clientId]);
+            }
+        }
+
+        function showQuickActions() {
+            if (!currentAction) {
+                document.getElementById('quickActions').innerHTML = '';
+                return;
+            }
+
+            document.getElementById('quickActions').innerHTML = `
+                <button class="quick-btn" onclick="handlePreview()">👁 Preview</button>
+                <button class="quick-btn primary" onclick="handleSend()">✓ Send</button>
+                <button class="quick-btn" onclick="handleSkip()">Skip</button>
+            `;
+        }
+
+        // ============ MESSAGE PANEL ACTIONS ============
+        function handlePreview() {
+            if (!currentAction) return;
+
+            const client = clients[currentAction.clientId];
+            addUserMessage("PREVIEW");
+            addAIMessage(`📝 Draft for ${client.name}:\n\n"${currentAction.preview}"\n\nType SEND to approve, EDIT to modify, or SKIP to discard.`);
+
+            // Auto-open the client view to show the pending draft
+            showClient(currentAction.clientId);
+        }
+
+        function handleSend() {
+            if (!currentAction) return;
+
+            const client = clients[currentAction.clientId];
+            addUserMessage("SEND");
+
+            // Mark as sent
+            currentAction.sent = true;
+
+            // Add to client history
+            const now = new Date(simTime);
+            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            client.history.unshift({
+                date: `Today, ${timeStr}`,
+                type: 'AI Action',
+                text: currentAction.activityText,
+                ai: true,
+                justSent: true
+            });
+
+            // Update funnel if needed
+            let newStage = client.stage;
+            if (currentAction.type === 'offer-update') {
+                newStage = 4;
+            } else if (currentAction.type === 'offer-prep') {
+                newStage = 3;
+            }
+
+            if (newStage !== client.stage) {
+                client.stage = newStage;
+            }
+
+            // Add completed event to calendar
+            const actionLabels = {
+                'follow-up': '✓ Follow-up Sent',
+                'pre-showing': '✓ Prep Sent',
+                'price-drop': '✓ Alert Sent',
+                'offer-update': '🎉 Offer Accepted',
+                'schedule-request': '✓ Options Sent',
+                'offer-prep': '✓ Offer Submitted'
+            };
+
+            calendarEvents.push({
+                id: calendarEvents.length + 100,
+                clientId: currentAction.clientId,
+                type: 'ai-completed',
+                day: 1,
+                hour: simTime.getHours(),
+                duration: 0.5,
+                title: actionLabels[currentAction.type] || '✓ AI Action',
+                sub: client.name
+            });
+
+            // Update UI
+            addAIMessage(`✓ Sent to ${client.name}!\n\nTheir timeline has been updated. ${newStage !== client.stage - 1 ? `Pipeline moved to ${['New Lead', 'Qualified', 'Touring', 'Offer', 'Contract', 'Closed'][newStage]}.` : ''}`);
+
+            showToast(`Message sent to ${client.name}`);
+
+            // If viewing this client, refresh timeline
+            if (currentClientId === client.id) {
+                renderClientTimeline(client);
+                // Animate funnel change
+                if (newStage !== client.stage) {
+                    setTimeout(() => {
+                        const stageEl = document.getElementById(`funnel-${newStage}`);
+                        if (stageEl) {
+                            stageEl.style.transform = 'scale(1.1)';
+                            setTimeout(() => { stageEl.style.transform = 'scale(1)'; }, 300);
+                        }
+                    }, 300);
+                }
+            }
+
+            // Clear action
+            currentAction = null;
+            showQuickActions();
+        }
+
+        function handleSkip() {
+            if (!currentAction) return;
+            addUserMessage("SKIP");
+            addAIMessage("Understood. Draft discarded. I'll hold off on this one.");
+            currentAction.sent = true; // Mark as handled
+            currentAction = null;
+            showQuickActions();
+
+            // Refresh client timeline if viewing
+            if (currentClientId) {
+                renderClientTimeline(clients[currentClientId]);
+            }
+        }
+
+        // ============ MESSAGING ============
+        function addAIMessage(text) {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const div = document.createElement('div');
+            div.className = 'msg ai';
+            div.innerHTML = `
+                <div class="msg-bubble">${text}</div>
+                <div class="msg-time">${time}</div>
+            `;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+
+        function addUserMessage(text) {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const div = document.createElement('div');
+            div.className = 'msg user';
+            div.innerHTML = `
+                <div class="msg-bubble">${text}</div>
+                <div class="msg-time">${time}</div>
+            `;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+
+            addUserMessage(text);
+
+            const lower = text.toLowerCase();
+            if (lower === 'preview' && currentAction) {
+                handlePreview();
+            } else if (lower === 'send' && currentAction) {
+                handleSend();
+            } else if (lower === 'skip' && currentAction) {
+                handleSkip();
+            } else {
+                setTimeout(() => {
+                    addAIMessage("I understand. Let me know when you're ready to review any pending actions!");
+                }, 500);
+            }
+        }
+
+        // ============ UTILS ============
+        function showToast(msg) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<span style="color:#10b981; margin-right:8px;">✓</span> ${msg}`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Init
+        init();
+    </script>
+</body>
+</html>
