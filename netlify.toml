@@ -1,0 +1,13 @@
+[build]
+  publish = "public"
+  command = "echo 'No build needed'"
+
+[[redirects]]
+  from = "/app"
+  to = "/dashboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
