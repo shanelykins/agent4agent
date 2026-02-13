@@ -57,7 +57,7 @@ app.get('/auth', (req, res) => {
   const envFilePath = path.resolve(__dirname, '.env');
   let clientId = null;
   let clientSecret = null;
-  
+
   try {
     const envFile = readFileSync(envFilePath, 'utf8');
     const lines = envFile.split('\n');
@@ -77,21 +77,27 @@ app.get('/auth', (req, res) => {
     console.error('Error reading .env file:', e.message);
     return res.status(500).send('Error: ' + e.message);
   }
-  
+
   if (!clientId || !clientSecret) {
     return res.status(500).send(`Missing credentials. CLIENT_ID: ${clientId ? 'SET' : 'MISSING'}, SECRET: ${clientSecret ? 'SET' : 'MISSING'}`);
   }
-  
+
   const client = new google.auth.OAuth2(
     clientId,
     clientSecret,
     REDIRECT_URI
   );
-  
+
+  // Get redirect URL from query parameter
+  const redirectUrl = req.query.redirect || '/';
+  console.log('/auth called with redirect:', redirectUrl);
+
   const authUrl = client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/calendar.readonly'],
+    state: redirectUrl, // Pass redirect URL in state parameter
   });
+  console.log('Generated auth URL with state:', redirectUrl);
   res.redirect(authUrl);
 });
 
@@ -99,13 +105,17 @@ app.get('/auth', (req, res) => {
 let oauthTokens = null;
 
 app.get('/oauth2callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
+  const redirectUrl = state || '/';
+
+  console.log('OAuth callback - state:', state, 'redirectUrl:', redirectUrl);
+
   try {
     // Read .env file to get credentials
     const envFilePath = path.resolve(__dirname, '.env');
     let clientId = null;
     let clientSecret = null;
-    
+
     try {
       const envFile = readFileSync(envFilePath, 'utf8');
       const lines = envFile.split('\n');
@@ -121,14 +131,14 @@ app.get('/oauth2callback', async (req, res) => {
     } catch (e) {
       console.error('Error reading .env:', e);
     }
-    
+
     const client = new google.auth.OAuth2(
       clientId,
       clientSecret,
       REDIRECT_URI
     );
     const { tokens } = await client.getToken(code);
-    
+
     // Store tokens globally
     oauthTokens = tokens;
     console.log('✓ OAuth tokens stored:', {
@@ -137,11 +147,11 @@ app.get('/oauth2callback', async (req, res) => {
       expiry_date: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'N/A'
     });
     console.log('Full tokens object keys:', Object.keys(tokens));
-    
-    res.redirect('/?auth=success');
+
+    res.redirect(`${redirectUrl}?auth=success`);
   } catch (error) {
     console.error('Auth error:', error);
-    res.redirect('/?auth=error');
+    res.redirect(`${redirectUrl}?auth=error`);
   }
 });
 
@@ -404,7 +414,14 @@ app.post('/api/send-message', async (req, res) => {
   }
 });
 
+// App route - main dashboard
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Visit http://localhost:${PORT}/auth to connect your calendar`);
+  console.log(`Landing page: http://localhost:${PORT}`);
+  console.log(`Onboarding: http://localhost:${PORT}/onboarding.html`);
+  console.log(`App: http://localhost:${PORT}/app`);
 });

@@ -3,697 +3,859 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar Follow-Up MVP</title>
+    <title>Doublebook - Your Silent Assistant</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            line-height: 1.6;
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        
-        .auth-status {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .connect-btn {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        .connect-btn:hover {
-            background: #357ae8;
-        }
-        
-        .events-grid {
-            display: grid;
-            gap: 15px;
-        }
-        
-        .event-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            position: relative;
-        }
-        
-        .event-card.has-followup::before {
-            content: '';
-            position: absolute;
-            left: 0;
+
+        /* Navbar */
+        nav {
+            position: fixed;
             top: 0;
-            bottom: 0;
-            width: 4px;
-            background: #34a853;
-            border-radius: 8px 0 0 8px;
+            z-index: 50;
+            width: 100%;
+            border-bottom: 1px solid #e2e8f0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
         }
-        
-        .event-header {
+
+        .nav-container {
+            max-width: 1280px;
+            margin: 0 auto;
             display: flex;
+            height: 64px;
+            align-items: center;
             justify-content: space-between;
-            align-items: start;
-            margin-bottom: 15px;
-        }
-        
-        .event-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .event-time {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .followup-badge {
-            background: #34a853;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
-        .event-details {
-            margin: 15px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 4px;
-        }
-        
-        .event-details p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .message-box {
-            margin-top: 15px;
-            display: none;
-        }
-        
-        .message-box.active {
-            display: block;
-        }
-        
-        .message-textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: vertical;
-            min-height: 100px;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .btn-primary {
-            background: #4285f4;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #357ae8;
-        }
-        
-        .btn-secondary {
-            background: #e0e0e0;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #d5d5d5;
-        }
-        
-        .btn-success {
-            background: #34a853;
-            color: white;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: 8px;
-            color: #666;
-        }
-        
-        .status-sent {
-            color: #34a853;
-            font-size: 14px;
-            font-weight: 500;
-            margin-top: 10px;
+            padding: 0 24px;
         }
 
-        /* Time Simulator */
-        .time-simulator {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            z-index: 1000;
-            min-width: 220px;
-        }
-
-        .time-simulator-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.8;
-            margin-bottom: 5px;
-        }
-
-        .time-simulator-clock {
-            font-size: 32px;
-            font-weight: 700;
-            font-family: 'SF Mono', Monaco, monospace;
-        }
-
-        .time-simulator-date {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 15px;
-        }
-
-        .time-simulator-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            width: 100%;
-            transition: background 0.2s;
-        }
-
-        .time-simulator-btn:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-        .event-status {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-upcoming {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .status-in-progress {
-            background: #fff3e0;
-            color: #f57c00;
-        }
-
-        .status-ended {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .status-sent {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .auto-send-toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #323232;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 1001;
-            animation: slideUp 0.3s ease;
+        .logo {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
-        .auto-send-toast.success {
-            background: #2e7d32;
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: #0f172a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
         }
 
-        @keyframes slideUp {
-            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
 
-        .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
+        .nav-links {
+            display: none;
+            align-items: center;
+            gap: 32px;
+        }
+
+        @media (min-width: 768px) {
+            .nav-links {
+                display: flex;
+            }
+        }
+
+        .nav-link {
+            font-size: 14px;
+            font-weight: 500;
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: #0f172a;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #0f172a;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #334155;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #0f172a;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding-top: 128px;
+            padding-bottom: 80px;
+            overflow: hidden;
+        }
+
+        .hero-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .hero-grid {
+            display: grid;
+            gap: 48px;
+            align-items: center;
+        }
+
+        @media (min-width: 1024px) {
+            .hero-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 24px;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: pulse 2s infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        h1 {
+            font-family: Georgia, serif;
+            font-size: 3rem;
+            line-height: 1.2;
+            margin-bottom: 24px;
+        }
+
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 4rem;
+            }
+        }
+
+        .text-muted {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .lead {
+            font-size: 1.25rem;
+            color: #64748b;
+            margin-bottom: 40px;
+            max-width: 600px;
+        }
+
+        .waitlist-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 448px;
+        }
+
+        @media (min-width: 640px) {
+            .waitlist-form {
+                flex-direction: row;
+            }
+        }
+
+        .input {
+            flex: 1;
+            height: 48px;
+            padding: 0 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 9999px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: #0f172a;
+        }
+
+        .hero-image {
+            position: relative;
+        }
+
+        .image-container {
+            aspect-ratio: 4/3;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border: 8px solid white;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .stat-card {
+            position: absolute;
+            bottom: -24px;
+            left: -24px;
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid #f1f5f9;
+            display: none;
+        }
+
+        @media (min-width: 640px) {
+            .stat-card {
+                display: block;
+            }
+        }
+
+        .stat-card-inner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: #dbeafe;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        /* Trust Bar */
+        .trust-bar {
+            padding: 48px 0;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+        }
+
+        .trust-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+            text-align: center;
+        }
+
+        .trust-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #cbd5e1;
+            margin-bottom: 32px;
+        }
+
+        .trust-logos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 48px;
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+
+        .trust-logos span {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* Features */
+        .features {
+            padding: 96px 0;
+        }
+
+        .features-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        h2 {
+            font-family: Georgia, serif;
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+
+        @media (min-width: 768px) {
+            h2 {
+                font-size: 3rem;
+            }
+        }
+
+        .section-subtitle {
+            color: #64748b;
+            max-width: 672px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            gap: 32px;
+        }
+
+        @media (min-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .feature-card {
+            background: white;
+            padding: 32px;
+            border-radius: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 24px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .feature-desc {
+            color: #64748b;
+            line-height: 1.7;
+        }
+
+        /* How it Works */
+        .how-it-works {
+            padding: 96px 0;
+            background: white;
+        }
+
+        .how-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .how-grid {
+            display: grid;
+            gap: 64px;
+            align-items: center;
+        }
+
+        @media (min-width: 1024px) {
+            .how-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .check-list {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .check-item {
+            display: flex;
+            gap: 16px;
+        }
+
+        .check-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+
+        .demo-box {
+            background: #f8fafc;
+            border-radius: 40px;
+            padding: 32px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .demo-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .demo-step {
+            background: white;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .demo-step.active {
+            border: 2px solid #0f172a;
+            margin-left: 32px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: #f1f5f9;
+            color: #0f172a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .demo-step.active .step-number {
+            background: #0f172a;
+            color: white;
+        }
+
+        .step-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .step-text.italic {
+            font-style: italic;
+        }
+
+        /* Footer */
+        footer {
+            padding: 80px 0;
+            background: #0f172a;
+            color: white;
+        }
+
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .footer-top {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            justify-content: space-between;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 48px;
+            margin-bottom: 48px;
+        }
+
+        @media (min-width: 768px) {
+            .footer-top {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .footer-brand p {
+            color: #94a3b8;
+            max-width: 384px;
+            margin-top: 16px;
+        }
+
+        .footer-cta {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        @media (min-width: 768px) {
+            .footer-cta {
+                align-items: flex-end;
+            }
+        }
+
+        .footer-cta p {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .footer-bottom {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        @media (min-width: 768px) {
+            .footer-bottom {
+                flex-direction: row;
+            }
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 32px;
+        }
+
+        .footer-links a {
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .success-message {
+            background: #dcfce7;
+            color: #166534;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid #bbf7d0;
+        }
+
+        .waitlist-note {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
         }
     </style>
 </head>
 <body>
-    <!-- Time Simulator Widget -->
-    <div class="time-simulator" id="timeSimulator" style="display: none;">
-        <div class="time-simulator-label">Demo Time Machine</div>
-        <div class="time-simulator-clock" id="simClock">--:--</div>
-        <div class="time-simulator-date" id="simDate">---</div>
-        <button class="time-simulator-btn" onclick="fastForward()">
-            ⏩ Fast Forward 1 Hour
-        </button>
-    </div>
-
-    <div class="container">
-        <header>
-            <h1>Calendar Follow-Up</h1>
-            <div class="auth-status" id="authStatus">
-                <p>Connect your Google Calendar to see recent showings</p>
-                <button class="connect-btn" onclick="connectCalendar()">Connect Calendar</button>
+    <!-- Navbar -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <span class="logo-text">Doublebook</span>
             </div>
-            <div id="calendarControls" style="display: none; margin-top: 15px;">
-                <label for="calendarSelect" style="font-size: 14px; margin-right: 10px;">Calendar:</label>
-                <select id="calendarSelect" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; min-width: 200px;">
-                    <option value="primary">Loading calendars...</option>
-                </select>
-                <label style="margin-left: 20px; font-size: 14px;">
-                    <input type="checkbox" id="todayOnly" checked style="margin-right: 5px;">
-                    Today only
-                </label>
-                <button class="btn btn-secondary" onclick="loadEvents()" style="margin-left: 15px;">Refresh</button>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#how-it-works" class="nav-link">How it Works</a>
+                <a href="#waitlist" class="btn btn-primary">Join Waitlist</a>
             </div>
-        </header>
-        
-        <div id="eventsContainer">
-            <div class="loading">Loading events...</div>
         </div>
-    </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-grid">
+                <div>
+                    <div class="badge">
+                        <span class="pulse-dot"></span>
+                        Now accepting early access
+                    </div>
+                    <h1>
+                        Sell more properties, <span class="text-muted">handle less admin.</span>
+                    </h1>
+                    <p class="lead">
+                        Doublebook is the silent assistant for high-performing real estate agents. We handle the repetitive tasks so you can focus on closing deals.
+                    </p>
+                    <div id="waitlist">
+                        <form class="waitlist-form" id="waitlistForm" action="https://formspree.io/f/xkovjyqj" method="POST">
+                            <input
+                                type="email"
+                                name="email"
+                                class="input"
+                                placeholder="Enter your work email"
+                                required
+                                id="emailInput"
+                            />
+                            <button type="submit" class="btn btn-primary" id="submitBtn">Join Waitlist</button>
+                        </form>
+                        <p class="waitlist-note">Join 500+ agents already on the waitlist. · <a href="/onboarding.html" style="color: #64748b; text-decoration: underline;">Test Product</a></p>
+                    </div>
+                </div>
+
+                <div class="hero-image">
+                    <div class="image-container">
+                        <img
+                            src="/hero-bg.png"
+                            alt="Modern real estate workspace"
+                        />
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-inner">
+                            <div class="stat-icon">⏱️</div>
+                            <div>
+                                <div class="stat-value">12.5 hrs</div>
+                                <div class="stat-label">Saved per week</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust Bar -->
+    <section class="trust-bar">
+        <div class="trust-container">
+            <p class="trust-label">Trusted by top producers at</p>
+            <div class="trust-logos">
+                <span>RE/MAX</span>
+                <span>Compass</span>
+                <span>Century 21</span>
+                <span>Coldwell Banker</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="features">
+        <div class="features-container">
+            <div class="section-header">
+                <h2>Focus on what earns you money.</h2>
+                <p class="section-subtitle">We meet you where you are, automating the manual work that slows you down.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Instant Lead Response</h3>
+                    <p class="feature-desc">Never miss a Zillow or Realtor.com lead. Our assistant qualifies them instantly via SMS.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📅</div>
+                    <h3>Automated Showings</h3>
+                    <p class="feature-desc">Coordinate viewings effortlessly. We handle the back-and-forth between sellers and buyers.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Market Research</h3>
+                    <p class="feature-desc">Get automated CMA drafts and market updates delivered to your inbox every morning.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="how-container">
+            <div class="how-grid">
+                <div>
+                    <h2>An assistant you can trust.</h2>
+                    <div class="check-list">
+                        <div class="check-item">
+                            <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <div>
+                                <h3>No complex setup</h3>
+                                <p class="feature-desc">Connect your email and CRM. We do the rest. No AI degrees required.</p>
+                            </div>
+                        </div>
+                        <div class="check-item">
+                            <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <div>
+                                <h3>Always in control</h3>
+                                <p class="feature-desc">Our assistant drafts, you approve. Nothing goes to a client without your sign-off.</p>
+                            </div>
+                        </div>
+                        <div class="check-item">
+                            <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <div>
+                                <h3>Secure & Private</h3>
+                                <p class="feature-desc">Your data is yours. We use industry-leading encryption to keep your leads safe.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="demo-box">
+                    <div class="demo-steps">
+                        <div class="demo-step">
+                            <div class="step-number">1</div>
+                            <div class="step-text">Drafting follow-up for 123 Main St...</div>
+                        </div>
+                        <div class="demo-step active">
+                            <div class="step-number">2</div>
+                            <div class="step-text italic">"Hi John, noticed you viewed the listing..."</div>
+                        </div>
+                        <div class="demo-step">
+                            <div class="step-number">3</div>
+                            <div class="step-text">Approved. Sending now.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <div class="logo-icon">⚡</div>
+                        <span class="logo-text">Doublebook</span>
+                    </div>
+                    <p>The high-performance assistant for real estate professionals.</p>
+                </div>
+                <div class="footer-cta">
+                    <p>Join the elite waitlist</p>
+                    <form class="waitlist-form" action="https://formspree.io/f/xkovjyqj" method="POST">
+                        <input
+                            type="email"
+                            name="email"
+                            class="input"
+                            placeholder="Enter your work email"
+                            required
+                        />
+                        <button type="submit" class="btn btn-primary">Join Waitlist</button>
+                    </form>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 Doublebook. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        let isAuthenticated = false;
-        let selectedCalendarId = 'primary';
-        let simulatedTime = new Date();
-        let eventsData = [];
-        let sentEventIds = new Set();
+        // Handle form submission with Formspree
+        const forms = document.querySelectorAll('form[action*="formspree"]');
 
-        // Check if just returned from auth
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('auth') === 'success') {
-            isAuthenticated = true;
-            loadCalendars();
-            // Clean URL
-            window.history.replaceState({}, document.title, '/');
-        }
+        forms.forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-        function connectCalendar() {
-            window.location.href = '/auth';
-        }
+                const button = form.querySelector('button[type="submit"]');
+                const originalText = button.textContent;
+                button.textContent = 'Joining...';
+                button.disabled = true;
 
-        // Time Simulator Functions
-        function updateClockDisplay() {
-            const clock = document.getElementById('simClock');
-            const dateEl = document.getElementById('simDate');
-            if (clock && dateEl) {
-                clock.textContent = simulatedTime.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
-                dateEl.textContent = simulatedTime.toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }
-        }
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: form.querySelector('input[type="email"]').value
+                        })
+                    });
 
-        function showTimeSimulator() {
-            document.getElementById('timeSimulator').style.display = 'block';
-            updateClockDisplay();
-        }
-
-        async function fastForward() {
-            // Jump 1 hour ahead
-            simulatedTime = new Date(simulatedTime.getTime() + 60 * 60 * 1000);
-            updateClockDisplay();
-
-            // Check for events that just ended
-            await checkForEndedEvents();
-
-            // Re-render events with updated statuses
-            renderEvents();
-        }
-
-        async function checkForEndedEvents() {
-            for (const event of eventsData) {
-                const endTime = new Date(event.end.dateTime || event.end.date);
-                const startTime = new Date(event.start.dateTime || event.start.date);
-
-                // Check if event just ended (end time is now in the past) and hasn't been sent
-                if (endTime <= simulatedTime && !sentEventIds.has(event.id)) {
-                    await autoSendFollowUp(event);
+                    if (response.ok) {
+                        form.innerHTML = '<div class="success-message">Success! You\'re on the list.</div>';
+                    } else {
+                        throw new Error('Failed to submit');
+                    }
+                } catch (error) {
+                    alert('Something went wrong. Please try again.');
+                    button.textContent = originalText;
+                    button.disabled = false;
                 }
-            }
-        }
-
-        async function autoSendFollowUp(event) {
-            // Mark as being processed
-            sentEventIds.add(event.id);
-
-            // Show toast - generating
-            showToast(`Showing ended: "${event.summary}" - Generating follow-up...`, false);
-
-            try {
-                // Generate message
-                const genResponse = await fetch('/api/generate-message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        eventSummary: event.summary,
-                        eventDescription: event.description || '',
-                        propertyAddress: event.location || ''
-                    })
-                });
-                const genData = await genResponse.json();
-
-                // Send message
-                const sendResponse = await fetch('/api/send-message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        eventId: event.id,
-                        message: genData.message
-                    })
-                });
-
-                if (sendResponse.ok) {
-                    showToast(`✓ Follow-up sent for "${event.summary}"!`, true);
-                    renderEvents();
-                }
-            } catch (error) {
-                console.error('Auto-send error:', error);
-                showToast(`Failed to send follow-up for "${event.summary}"`, false);
-            }
-        }
-
-        function showToast(message, isSuccess) {
-            // Remove existing toast
-            const existing = document.querySelector('.auto-send-toast');
-            if (existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.className = `auto-send-toast ${isSuccess ? 'success' : ''}`;
-            toast.innerHTML = isSuccess ? message : `<div class="spinner"></div> ${message}`;
-            document.body.appendChild(toast);
-
-            if (isSuccess) {
-                setTimeout(() => toast.remove(), 4000);
-            } else {
-                setTimeout(() => toast.remove(), 10000);
-            }
-        }
-
-        function getEventStatus(event) {
-            const startTime = new Date(event.start.dateTime || event.start.date);
-            const endTime = new Date(event.end.dateTime || event.end.date);
-
-            if (sentEventIds.has(event.id)) {
-                return { status: 'sent', label: '✓ Follow-up Sent', class: 'status-sent' };
-            } else if (simulatedTime < startTime) {
-                return { status: 'upcoming', label: 'Upcoming', class: 'status-upcoming' };
-            } else if (simulatedTime >= startTime && simulatedTime < endTime) {
-                return { status: 'in-progress', label: 'In Progress', class: 'status-in-progress' };
-            } else {
-                return { status: 'ended', label: 'Ended', class: 'status-ended' };
-            }
-        }
-
-        async function loadCalendars() {
-            const authStatus = document.getElementById('authStatus');
-            const calendarControls = document.getElementById('calendarControls');
-            const calendarSelect = document.getElementById('calendarSelect');
-
-            authStatus.innerHTML = '<p style="color: #34a853;">✓ Calendar connected</p>';
-            calendarControls.style.display = 'block';
-
-            try {
-                const response = await fetch('/api/calendars');
-                const data = await response.json();
-
-                if (data.calendars && data.calendars.length > 0) {
-                    calendarSelect.innerHTML = data.calendars.map(cal =>
-                        `<option value="${cal.id}" ${cal.primary ? 'selected' : ''}>${cal.summary}${cal.primary ? ' (Primary)' : ''}</option>`
-                    ).join('');
-
-                    // Set default to primary calendar
-                    const primaryCal = data.calendars.find(c => c.primary);
-                    selectedCalendarId = primaryCal ? primaryCal.id : data.calendars[0].id;
-                }
-
-                // Add change listener
-                calendarSelect.addEventListener('change', (e) => {
-                    selectedCalendarId = e.target.value;
-                    loadEvents();
-                });
-
-                document.getElementById('todayOnly').addEventListener('change', () => {
-                    loadEvents();
-                });
-
-                // Load events with default calendar
-                loadEvents();
-
-            } catch (error) {
-                console.error('Error loading calendars:', error);
-                calendarSelect.innerHTML = '<option value="primary">Primary Calendar</option>';
-                loadEvents();
-            }
-        }
-
-        async function loadEvents() {
-            const container = document.getElementById('eventsContainer');
-            const todayOnly = document.getElementById('todayOnly').checked;
-            const calendarId = document.getElementById('calendarSelect').value || 'primary';
-
-            container.innerHTML = '<div class="loading">Loading events...</div>';
-
-            try {
-                const response = await fetch(`/api/events?calendarId=${encodeURIComponent(calendarId)}&todayOnly=${todayOnly}`);
-                const data = await response.json();
-
-                if (!data.events || data.events.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <h2>No recent showings found</h2>
-                            <p>Create a calendar event with "showing" in the title to test</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Store events data and show time simulator
-                eventsData = data.events;
-                showTimeSimulator();
-
-                renderEvents();
-
-            } catch (error) {
-                console.error('Error loading events:', error);
-                container.innerHTML = '<div class="empty-state"><p>Error loading events</p></div>';
-            }
-        }
-
-        function renderEvents() {
-            const container = document.getElementById('eventsContainer');
-            container.innerHTML = '<div class="events-grid"></div>';
-            const grid = container.querySelector('.events-grid');
-
-            eventsData.forEach(event => {
-                grid.appendChild(createEventCard(event));
             });
-        }
-        
-        function createEventCard(event) {
-            const card = document.createElement('div');
-            card.className = 'event-card';
-            card.id = `event-${event.id}`;
+        });
 
-            const eventStatus = getEventStatus(event);
-
-            if (eventStatus.status === 'sent') {
-                card.classList.add('has-followup');
-            }
-
-            const startTime = new Date(event.start.dateTime || event.start.date);
-            const endTime = new Date(event.end.dateTime || event.end.date);
-            const timeStr = startTime.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit'
-            }) + ' - ' + endTime.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit'
-            });
-
-            const escapedSummary = (event.summary || '').replace(/'/g, "\\'");
-            const escapedDesc = (event.description || '').replace(/'/g, "\\'");
-            const escapedLocation = (event.location || '').replace(/'/g, "\\'");
-
-            card.innerHTML = `
-                <div class="event-header">
-                    <div>
-                        <div class="event-title">${event.summary}</div>
-                        <div class="event-time">${timeStr}</div>
-                    </div>
-                    <span class="event-status ${eventStatus.class}">${eventStatus.label}</span>
-                </div>
-
-                <div class="event-details">
-                    ${event.location ? `<p><strong>Location:</strong> ${event.location}</p>` : ''}
-                    ${event.description ? `<p><strong>Notes:</strong> ${event.description}</p>` : ''}
-                </div>
-
-                ${eventStatus.status !== 'sent' ? `
-                    <button class="btn btn-primary" onclick="generateMessage('${event.id}', '${escapedSummary}', '${escapedDesc}', '${escapedLocation}')">
-                        Generate Follow-Up
-                    </button>
-                ` : ''}
-
-                <div class="message-box" id="message-${event.id}">
-                    <textarea class="message-textarea" id="textarea-${event.id}"></textarea>
-                    <div class="button-group">
-                        <button class="btn btn-success" onclick="sendMessage('${event.id}')">Send</button>
-                        <button class="btn btn-secondary" onclick="hideMessage('${event.id}')">Cancel</button>
-                    </div>
-                </div>
-            `;
-
-            return card;
-        }
-        
-        async function generateMessage(eventId, summary, description, location) {
-            const messageBox = document.getElementById(`message-${eventId}`);
-            const textarea = document.getElementById(`textarea-${eventId}`);
-            
-            messageBox.classList.add('active');
-            textarea.value = 'Generating message...';
-            
-            try {
-                const response = await fetch('/api/generate-message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        eventSummary: summary,
-                        eventDescription: description,
-                        propertyAddress: location
-                    })
-                });
-                
-                const data = await response.json();
-                textarea.value = data.message;
-                
-            } catch (error) {
-                console.error('Error generating message:', error);
-                textarea.value = 'Error generating message. Please try again.';
-            }
-        }
-        
-        async function sendMessage(eventId) {
-            const textarea = document.getElementById(`textarea-${eventId}`);
-            const card = document.getElementById(`event-${eventId}`);
-
-            try {
-                const response = await fetch('/api/send-message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        eventId: eventId,
-                        message: textarea.value
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to send');
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
                 }
-
-                // Mark as sent and re-render
-                sentEventIds.add(eventId);
-                renderEvents();
-                showToast('✓ Message sent!', true);
-
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('Failed to send message: ' + error.message);
-            }
-        }
-        
-        function hideMessage(eventId) {
-            const messageBox = document.getElementById(`message-${eventId}`);
-            messageBox.classList.remove('active');
-        }
+            });
+        });
     </script>
 </body>
 </html>
